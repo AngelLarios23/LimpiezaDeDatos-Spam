@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+scikit-learn
+pandas
+python-docx
+PyMuPDF
+python-multipart
+spaCy
+joblib
+jinja2
+loguru
+pytest
+beautifulsoup4
+nltk
+openpyxl

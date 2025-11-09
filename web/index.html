@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SpamCleaner Web</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f9f9f9; }
+    h1 { color: #333; }
+    textarea, input[type="file"] { width: 100%; margin-bottom: 10px; }
+    button { padding: 10px 20px; font-size: 16px; margin-right: 10px; }
+    .result, .table-box { margin-top: 20px; padding: 10px; background: #fff; border: 1px solid #ccc; }
+    .spam { color: red; font-weight: bold; }
+    .ham { color: green; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>🧹 SpamCleaner</h1>
+
+  <h2>🔍 Análisis individual</h2>
+  <textarea id="inputText" placeholder="Escribe aquí..."></textarea>
+  <button onclick="predictSpam()">Analizar texto</button>
+  <div class="result" id="resultBox" style="display:none;"></div>
+
+  <h2>📁 Análisis por archivo (.csv o .xlsx)</h2>
+  <input type="file" id="fileInput" accept=".csv,.xlsx" />
+  <button onclick="predictFile()">Analizar archivo</button>
+  <div class="table-box" id="tableBox" style="display:none;"></div>
+
+  <script>
+    async function predictSpam() {
+      const text = document.getElementById("inputText").value;
+      const resultBox = document.getElementById("resultBox");
+      resultBox.style.display = "none";
+
+      const response = await fetch("http://localhost:8000/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) {
+        resultBox.innerHTML = "❌ Error al conectar con la API.";
+        resultBox.style.display = "block";
+        return;
+      }
+
+      const data = await response.json();
+      resultBox.innerHTML = `
+        <p><strong>Resultado:</strong> <span class="${data.is_spam ? 'spam' : 'ham'}">${data.is_spam ? 'SPAM' : 'Legítimo'}</span></p>
+        <p><strong>Confianza:</strong> ${data.confidence}</p>
+        <p><strong>Texto limpio:</strong> ${data.cleaned_text}</p>
+      `;
+      resultBox.style.display = "block";
+    }
+
+    async function predictFile() {
+      const fileInput = document.getElementById("fileInput");
+      const tableBox = document.getElementById("tableBox");
+      tableBox.style.display = "none";
+
+      if (!fileInput.files.length) {
+        alert("Selecciona un archivo primero.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      const response = await fetch("http://localhost:8000/api/batch-predict", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+
+      const rows = data.results.map(r => `
+        <tr>
+          <td>${r.index}</td>
+          <td>${r.original_text}</td>
+          <td>${r.cleaned_text}</td>
+          <td class="${r.is_spam ? 'spam' : 'ham'}">${r.is_spam ? 'SPAM' : 'Legítimo'}</td>
+          <td>${r.confidence}</td>
+        </tr>
+      `).join("");
+
+      tableBox.innerHTML = `
+        <h3>📊 Resultados del análisis</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Texto original</th>
+              <th>Texto limpio</th>
+              <th>Clasificación</th>
+              <th>Confianza</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+      tableBox.style.display = "block";
+    }
+  </script>
+</body>
+</html>
