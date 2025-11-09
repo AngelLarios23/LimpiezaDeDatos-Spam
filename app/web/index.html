@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SpamCleaner Web</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>🧹 SpamCleaner</h1>
+
+  <h2>🔍 Análisis individual</h2>
+  <textarea id="inputText" placeholder="Escribe aquí..."></textarea>
+  <button onclick="predictSpam()">Analizar texto</button>
+  <div class="result" id="resultBox" style="display:none;"></div>
+
+  <h2>📁 Análisis por archivo (.csv o .xlsx)</h2>
+  <input type="file" id="fileInput" accept=".csv,.xlsx" />
+  <button onclick="predictFile()">Analizar archivo</button>
+
+  <div class="summary-box" id="summaryBox" style="display:none;">
+    <h3>📊 Resumen del análisis</h3>
+    <p><strong>Total de mensajes:</strong> <span id="totalCount"></span></p>
+    <p><strong>SPAM detectado:</strong> <span id="spamCount"></span></p>
+    <p><strong>Legítimos:</strong> <span id="hamCount"></span></p>
+    <p><strong>Confianza promedio:</strong> <span id="avgConfidence"></span></p>
+  </div>
+
+  <div class="chart-box" id="chartBox" style="display:none;">
+    <h3>📈 Distribución SPAM vs Legítimos</h3>
+    <div class="chart-container">
+      <canvas id="spamChart" width="280" height="280"></canvas>
+    </div>
+  </div>
+
+  <div class="table-box" id="tableBox" style="display:none;"></div>
+
+  <h2>📧 Escaneo de correos maliciosos</h2>
+  <button onclick="scanEmails()">Escanear correos</button>
+  <div class="table-box" id="emailResults" style="display:none;"></div>
+
+  <script>
+    async function predictSpam() {
+      const text = document.getElementById("inputText").value;
+      const resultBox = document.getElementById("resultBox");
+      resultBox.style.display = "none";
+
+      const response = await fetch("http://localhost:8000/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) {
+        resultBox.innerHTML = "❌ Error al conectar con la API.";
+        resultBox.style.display = "block";
+        return;
+      }
+
+      const data = await response.json();
+      resultBox.innerHTML = `
+        <p><strong>Resultado:</strong> <span class="${data.is_spam ? 'spam' : 'ham'}">${data.is_spam ? 'SPAM' : 'Legítimo'}</span></p>
+        <p><strong>Confianza:</strong> ${data.confidence}</p>
+        <p><strong>Texto limpio:</strong> ${data.cleaned_text}</p>
+      `;
+      resultBox.style.display = "block";
+    }
+
+    let chartInstance = null;
+
+    function renderChart(spam, ham) {
+      const ctx = document.getElementById("spamChart").getContext("2d");
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: ["SPAM", "Legítimos"],
+          datasets: [{
+            data: [spam, ham],
+            backgroundColor: ["#e74c3c", "#2ecc71"],
+            borderColor: ["#ffffff", "#ffffff"],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: false,
+          animation: { animateScale: true },
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                font: { size: 14 },
+                color: "#333"
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const total = spam + ham;
+                  const value = context.parsed;
+                  const percent = ((value / total) * 100).toFixed(1);
+                  return `${context.label}: ${value} (${percent}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function predictFile() {
+      const fileInput = document.getElementById("fileInput");
+      const tableBox = document.getElementById("tableBox");
+      const summaryBox = document.getElementById("summaryBox");
+      const chartBox = document.getElementById("chartBox");
+      tableBox.style.display = "none";
+      summaryBox.style.display = "none";
+      chartBox.style.display = "none";
+
+      if (!fileInput.files.length) {
+        alert("Selecciona un archivo primero.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      const response = await fetch("http://localhost:8000/api/batch-predict", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+
+      document.getElementById("totalCount").textContent = data.summary.total;
+      document.getElementById("spamCount").textContent = data.summary.spam;
+      document.getElementById("hamCount").textContent = data.summary.ham;
+      document.getElementById("avgConfidence").textContent = data.summary.avg_confidence;
+      summaryBox.style.display = "block";
+
+      renderChart(data.summary.spam, data.summary.ham);
+      chartBox.style.display = "block";
+
+      const rows = data.results.map(r => `
+        <tr>
+          <td>${r.index}</td>
+          <td>${r.original_text}</td>
+          <td>${r.cleaned_text}</td>
+          <td class="${r.is_spam ? 'spam' : 'ham'}">${r.is_spam ? 'SPAM' : 'Legítimo'}</td>
+          <td>${r.confidence}</td>
+        </tr>
+      `).join("");
+
+      tableBox.innerHTML = `
+        <h3>📋 Detalle por mensaje</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Texto original</th>
+              <th>Texto limpio</th>
+              <th>Clasificación</th>
+              <th>Confianza</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+      tableBox.style.display = "block";
+    }
+
+    async function scanEmails() {
+      const emailBox = document.getElementById("emailResults");
+      emailBox.style.display = "none";
+
+      const response = await fetch("http://localhost:8000/scan-emails");
+      const data = await response.json();
+
+      if (!Array.isArray(data)) {
+        emailBox.innerHTML = "❌ Error al escanear correos.";
+        emailBox.style.display = "block";
+        return;
+      }
+
+      const rows = data.map((r, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${r.from}</td>
+          <td>${r.subject}</td>
+          <td class="${r.is_spam ? 'spam' : 'ham'}">${r.is_spam ? 'Malicioso' : 'Legítimo'}</td>
+          <td>${r.confidence}</td>
+        </tr>
+      `).join("");
+
+      emailBox.innerHTML = `
+        <h3>📋 Correos analizados</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Remitente</th>
+              <th>Asunto</th>
+              <th>Clasificación</th>
+              <th>Confianza</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+      emailBox.style.display = "block";
+    }
+  </script>
+</body>
+</html>

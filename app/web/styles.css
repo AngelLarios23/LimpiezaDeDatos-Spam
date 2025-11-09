@@ -1,0 +1,124 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 40px;
+  background: #f9f9f9;
+  color: #333;
+}
+
+h1 {
+  font-size: 32px;
+  margin-bottom: 20px;
+}
+
+h2 {
+  font-size: 24px;
+  margin-top: 30px;
+  margin-bottom: 10px;
+}
+
+h3 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+textarea,
+input[type="file"] {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  margin-right: 10px;
+  background-color: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #005fa3;
+}
+
+.result,
+.table-box,
+.summary-box,
+.chart-box {
+  margin-top: 20px;
+  padding: 15px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th,
+td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background-color: #f0f0f0;
+}
+
+.spam {
+  color: red;
+  font-weight: bold;
+}
+
+.ham {
+  color: green;
+  font-weight: bold;
+}
+
+.chart-box {
+  margin-top: 20px;
+  padding: 10px 15px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  max-width: 320px;
+  margin-left: auto;
+}
+
+.spam {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.ham {
+  color: #2ecc71;
+  font-weight: bold;
+}
+
+.table-box table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.table-box th, .table-box td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+.table-box th {
+  background-color: #f4f4f4;
+}
